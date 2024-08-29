@@ -48,6 +48,17 @@ export function handleFormSubmission(event, progressId) {
         if (data.gptResponse) {
             const responseDiv = document.getElementById('gpt-response'); // Get the GPT response container
             displayMarkdownResponse(data.gptResponse, responseDiv); // Display the GPT markdown response
+
+            // Store the GPT response in session storage
+            sessionStorage.setItem('gptResponse', data.gptResponse);
+
+            // Store the selected tool type in session storage
+            const selectedTool = document.getElementById('toolSelect').value;
+            sessionStorage.setItem('selectedTool', selectedTool);
+
+            // Show the "Generate Document" button
+            const createDocumentBtn = document.getElementById('create-document');
+            createDocumentBtn.classList.remove('hidden');
         } else {
             throw new Error('Invalid response from the server.');
         }

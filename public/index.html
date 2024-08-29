@@ -87,6 +87,7 @@
     <!-- Include the modular JavaScript files -->
     <script type="module">
         import { handleFormSubmission } from './formHandler.js';
+        import { handleDocumentCreation } from './documentHandler.js';
 
         // Tool Selection Logic
         const toolSelect = document.getElementById('toolSelect');
@@ -123,6 +124,9 @@
         document.getElementById('vpatForm').addEventListener('submit', function(event) {
             handleFormSubmission(event, 'vpatProgress'); // Handle submission for the VPAT form
         });
+
+        // Set up document creation
+        handleDocumentCreation();
     </script>
 </body>
 </html>
