@@ -1,0 +1,4 @@
+# Ignore environment files
+config/.env
+config/.env1
+src/components/.env
