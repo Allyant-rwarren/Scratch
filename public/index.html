@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Allyant Audit Tools</title>
+    <link rel="stylesheet" href="styles.css"> <!-- Link to the external CSS file for styling -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script> <!-- Include marked.js for markdown rendering -->
+</head>
+<body>
+    <header role="banner">
+        <!-- This could include a site banner or logo -->
+    </header>
+    
+    <div class="container" role="main">
+        <!-- Tool Selection Dropdown -->
+        <div class="tool-selection">
+            <label for="toolSelect">Select Tool:</label>
+            <select id="toolSelect" required>
+                <option value="">--Select Tool--</option>
+                <option value="summary">Summary Document Generator</option>
+                <option value="vpat">VPAT Generator</option>
+            </select>
+        </div>
+
+        <!-- Tool Forms -->
+        <div id="toolFormContainer" class="form-container">
+            <!-- Summary Document Form -->
+            <div id="summaryFormContainer" class="form-section" style="display:none;">
+                <h2 id="uploadSection">Generate Summary from CSV</h2>
+                <form id="uploadForm" action="/upload" method="post" enctype="multipart/form-data" aria-labelledby="uploadSection" novalidate>
+                    <!-- Input fields for the summary form -->
+                    <label for="clientName">Client Name:</label><br>
+                    <input type="text" id="clientName" name="clientName" aria-required="true"><br><br>
+
+                    <label for="platform">Platform:</label><br>
+                    <select id="platform" name="platform" aria-required="true">
+                        <option value="Web">Web</option>
+                    </select><br><br>
+
+                    <label for="projectUrl">Project URL:</label><br>
+                    <input type="text" id="projectUrl" name="projectUrl" pattern="^(www\.)?[a-zA-Z0-9\.\-]+\.[a-zA-Z]{2,}$" aria-required="true"><br><br>
+
+                    <label for="numViews">Number of Views:</label><br>
+                    <input type="number" id="numViews" name="numViews" aria-required="true"><br><br>
+
+                    <label for="numIssues">Number of Issues:</label><br>
+                    <input type="number" id="numIssues" name="numIssues" aria-required="true"><br><br>
+
+                    <label for="file">Select CSV file:</label><br>
+                    <input type="file" id="file" name="file" accept=".csv" aria-required="true"><br><br>
+
+                    <input type="submit" value="Upload">
+                </form>
+                <div id="summaryProgress" class="progress-indicator" role="status" aria-live="polite"></div> <!-- Progress indicator -->
+            </div>
+
+            <!-- VPAT Generator Form -->
+            <div id="vpatFormContainer" class="form-section" style="display:none;">
+                <h2 id="vpatSection">Upload CSV for VPAT Tool</h2>
+                <form id="vpatForm" action="/vpat-upload" method="post" enctype="multipart/form-data" aria-labelledby="vpatSection" novalidate>
+                    <!-- Input fields for the VPAT form -->
+                    <label for="clientNameVpat">Client Name:</label><br>
+                    <input type="text" id="clientNameVpat" name="clientName" aria-required="true"><br><br>
+
+                    <label for="vpatCsv">Select CSV file:</label><br>
+                    <input type="file" id="vpatCsv" name="file" accept=".csv" aria-required="true"><br><br>
+
+                    <input type="submit" value="Upload VPAT CSV">
+                </form>
+                <div id="vpatProgress" class="progress-indicator" role="status" aria-live="polite"></div> <!-- Progress indicator -->
+            </div>
+
+            <!-- GPT Response Section for all tools -->
+            <div class="response-section" style="background-color: #f0f0f0; padding: 15px; margin-top: 20px;">
+                <h2>GPT Response</h2>
+                <div id="gpt-response" aria-live="polite">
+                    <p>No issues reported yet. Upload a CSV file to start processing.</p>
+                </div>
+                <button id="create-document" class="hidden">Create Document</button> <!-- Initially hidden, appears after processing -->
+            </div>
+        </div>
+
+        <div id="ariaStatus" class="aria-live" aria-live="assertive" aria-atomic="true"></div> <!-- Live region for accessibility -->
+    </div>
+
+    <!-- Include the modular JavaScript files -->
+    <script type="module">
+        import { handleFormSubmission } from './formHandler.js';
+
+        // Tool Selection Logic
+        const toolSelect = document.getElementById('toolSelect');
+        const summaryFormContainer = document.getElementById('summaryFormContainer');
+        const vpatFormContainer = document.getElementById('vpatFormContainer');
+        const gptResponseContainer = document.querySelector('.response-section');
+
+        toolSelect.addEventListener('change', function() {
+            const selectedTool = toolSelect.value;
+
+            // Hide all form containers
+            summaryFormContainer.style.display = 'none';
+            vpatFormContainer.style.display = 'none';
+
+            // Clear previous GPT responses
+            document.getElementById('gpt-response').innerHTML = '<p>No issues reported yet. Upload a CSV file to start processing.</p>';
+
+            // Show the appropriate form based on the selected tool
+            if (selectedTool === 'summary') {
+                summaryFormContainer.style.display = 'block';
+            } else if (selectedTool === 'vpat') {
+                vpatFormContainer.style.display = 'block';
+            }
+
+            // Ensure GPT response section is always visible
+            gptResponseContainer.style.display = 'block';
+        });
+
+        // Set up form submissions
+        document.getElementById('uploadForm').addEventListener('submit', function(event) {
+            handleFormSubmission(event, 'summaryProgress'); // Handle submission for the summary form
+        });
+
+        document.getElementById('vpatForm').addEventListener('submit', function(event) {
+            handleFormSubmission(event, 'vpatProgress'); // Handle submission for the VPAT form
+        });
+    </script>
+</body>
+</html>

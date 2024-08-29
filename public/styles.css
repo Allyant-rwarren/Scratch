@@ -1,0 +1,79 @@
+/* styles.css */
+
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f9;
+    margin: 0;
+    padding: 0;
+}
+
+.container {
+    width: 80%;
+    max-width: 1200px;
+    margin: auto;
+    overflow: hidden;
+}
+
+header {
+    background: #35424a;
+    color: #ffffff;
+    padding-top: 30px;
+    min-height: 70px;
+    border-bottom: #e8491d 3px solid;
+    text-align: center;
+}
+
+.main-header {
+    margin: 0;
+    font-size: 24px;
+}
+
+.form-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    margin-top: 20px;
+}
+
+.form-section, .response-section {
+    flex: 1 1 48%;
+    padding: 20px;
+    background: #ffffff;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+}
+
+.form-section {
+    margin-right: 1%;
+}
+
+.response-section {
+    background: #e9ecef;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.progress-indicator {
+    font-weight: bold;
+    color: #e8491d;
+    margin-top: 20px;
+}
+
+.aria-live {
+    position: absolute;
+    left: -9999px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+}
+
+.hidden {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .form-section, .response-section {
+        flex: 1 1 100%;
+        margin-right: 0;
+    }
+}
