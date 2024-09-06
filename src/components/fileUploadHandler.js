@@ -33,7 +33,6 @@ async function handleFileUpload(req, res, UPLOAD_DIR, toolType) {
 
             const gptResponse = await sendToOpenAI(csvData, toolType);
 
-            // Store the project issue report URL in the session
             req.session.projectIssueReportURL = projectIssueReportURL;
             req.session.save((err) => {
                 if (err) {
@@ -41,11 +40,9 @@ async function handleFileUpload(req, res, UPLOAD_DIR, toolType) {
                     return res.status(500).json({ message: 'Failed to save session.' });
                 }
 
-                // Log only the essential information
                 console.log('Form fields:', fields);
                 console.log('OpenAI response:', gptResponse);
 
-                // Send the markdown response from GPT directly back to the client
                 return res.status(200).json({ message: 'File uploaded successfully.', gptResponse });
             });
         } catch (error) {

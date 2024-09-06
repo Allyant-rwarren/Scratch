@@ -1,13 +1,11 @@
 const fs = require('fs');
 const csv = require('csv-parser');
 
-// Define the columns we expect in the CSV
 const validColumns = [
     "HUB ID", "Location", "Name", "Sitewide?", "Component", 
     "Description of item/issue", "Priority", "Issue Link", "Allyant Status"
 ];
 
-// Parse the CSV file, ensuring we only capture the columns we're interested in
 async function parseCSV(filePath) {
     console.log('Starting CSV parsing for file:', filePath);
     const results = [];
@@ -24,16 +22,14 @@ async function parseCSV(filePath) {
                     if (col in data) {
                         filteredData[col] = data[col];
                     } else {
-                        filteredData[col] = ''; // Handle missing columns with an empty string
+                        filteredData[col] = '';
                         if (col === "HUB ID" || col === "Location") {
-                            // Consider the row invalid if essential fields are missing
                             isValidRow = false;
                         }
                     }
                 });
 
                 if (isValidRow) {
-                    // Extract project ID from the Issue Link
                     const issueLink = filteredData["Issue Link"];
                     const match = issueLink.match(/issues\/(\d+)/);
                     if (match) {

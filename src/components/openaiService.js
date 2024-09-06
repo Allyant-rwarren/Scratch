@@ -47,23 +47,25 @@ Guidelines:
 
 2. Two Examples Per Category: For each of the top three categories, provide exactly two common issue examples that, if fixed, would have a significant impact on the website's accessibility. Include the description of the issue and a link to the specific issue.
 
-3. Format:
-   - Your response should be in markdown format.
-   - Each category should be presented with its two examples in a clear and structured manner, as shown below.
+3. Issue Number Format: For each issue example, use the "Hub ID" found in the CSV data. Precede the Hub ID with a pound sign \`#\` to represent the issue number. For example, if the Hub ID in the CSV is 101, it should appear as \`#101\`.
+
+Format:
+- Your response should be in markdown format.
+- Each category should be presented with its two examples in a clear and structured manner, as shown below.
 
 Output Example:
 
-### Category 1: [Insert Category Name]
-- **Issue 1:** Description of issue 1. [Link](http://example.com/issue1)
-- **Issue 2:** Description of issue 2. [Link](http://example.com/issue2)
+### [Insert Category Name]
+- **#101** Description of issue 1. [Link](http://example.com/issue101)
+- **#102** Description of issue 2. [Link](http://example.com/issue102)
 
-### Category 2: [Insert Category Name]
-- **Issue 3:** Description of issue 3. [Link](http://example.com/issue3)
-- **Issue 4:** Description of issue 4. [Link](http://example.com/issue4)
+### [Insert Category Name]
+- **#103** Description of issue 3. [Link](http://example.com/issue103)
+- **#104** Description of issue 4. [Link](http://example.com/issue104)
 
-### Category 3: [Insert Category Name]
-- **Issue 5:** Description of issue 5. [Link](http://example.com/issue5)
-- **Issue 6:** Description of issue 6. [Link](http://example.com/issue6)
+### [Insert Category Name]
+- **#105** Description of issue 5. [Link](http://example.com/issue105)
+- **#106** Description of issue 6. [Link](http://example.com/issue106)
 
 Important Notes:
 - Ensure that only two issues are provided per category.

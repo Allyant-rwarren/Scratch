@@ -9,6 +9,7 @@ export function downloadFile(response, filename) {
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);
+            console.log('File download initiated.');
         })
         .catch(error => {
             console.error('Error:', error);

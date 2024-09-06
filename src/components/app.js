@@ -5,9 +5,10 @@ const cookieParser = require('cookie-parser');
 const session = require('express-session');
 const socketIo = require('socket.io');
 const authRoutes = require('./authRoutes');
-const { handleFileUpload } = require('./fileUploadHandler'); // Correct import for handling file uploads
+const { handleFileUpload } = require('./fileUploadHandler');
 const setupWebSocketServer = require('./webSocketServer');
 const { fillTemplate } = require('./templateProcessor');
+const { parseMarkdown } = require('./markdownParser');
 
 const app = express();
 const server = require('http').createServer(app);
@@ -16,18 +17,17 @@ const io = socketIo(server);
 const PORT = process.env.PORT || 3000;
 const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, '..', '..', 'uploads');
 
-// Session setup
+// Setup session with secure handling
 app.use(session({
-    secret: process.env.SESSION_SECRET || 'your-secret-key',  // Secret key for session encryption
-    resave: false,  // Prevents resaving session data if it wasn't modified during the request
-    saveUninitialized: true,  // Saves a session even if it's new and not modified yet
-    cookie: { secure: false }  // Should be true if using HTTPS in production for secure cookies
+    secret: process.env.SESSION_SECRET || 'your-secret-key',
+    resave: false,
+    saveUninitialized: true,
+    cookie: { secure: process.env.NODE_ENV === 'production' } 
 }));
 
-app.use(cookieParser());  // Parses cookies attached to the client request object
-app.use(express.json());  // Parses incoming JSON requests and makes the data accessible via req.body
+app.use(cookieParser());
+app.use(express.json());
 
-// Auth routes setup
 app.use(authRoutes);
 
 // Serve static files from the public directory
@@ -36,17 +36,17 @@ app.use(express.static(path.join(__dirname, '..', '..', 'public')));
 // Middleware to ensure authentication before handling specific routes
 function ensureAuthenticated(req, res, next) {
     if (req.cookies.accessToken) {
-        return next();  // User is authenticated; proceed to the next middleware/route handler
+        return next();
     } else {
         console.log('Access token missing, redirecting to login.');
-        res.redirect('/login');  // Redirect to login if the access token is missing
+        res.redirect('/login');
     }
 }
 
 // File upload route for Summary Document Generator
 app.post('/upload', ensureAuthenticated, async (req, res) => {
     try {
-        await handleFileUpload(req, res, UPLOAD_DIR, 'summary');  // Handle the upload specifically for the summary tool
+        await handleFileUpload(req, res, UPLOAD_DIR, 'summary');
     } catch (error) {
         console.error('Error during file upload:', error);
         res.status(500).json({ message: 'An error occurred during the upload. Please try again later.' });
@@ -56,7 +56,7 @@ app.post('/upload', ensureAuthenticated, async (req, res) => {
 // File upload route for VPAT Generator
 app.post('/vpat-upload', ensureAuthenticated, async (req, res) => {
     try {
-        await handleFileUpload(req, res, UPLOAD_DIR, 'vpat');  // Handle the upload specifically for the VPAT tool
+        await handleFileUpload(req, res, UPLOAD_DIR, 'vpat');
     } catch (error) {
         console.error('Error during VPAT file upload:', error);
         res.status(500).json({ message: 'An error occurred during the VPAT upload. Please try again later.' });
@@ -66,19 +66,20 @@ app.post('/vpat-upload', ensureAuthenticated, async (req, res) => {
 // Handle GPT response and save to session
 app.post('/gpt-response', ensureAuthenticated, (req, res) => {
     try {
-        const { clientName, platform, gptResponse } = req.body;
+        const { clientName, platform, gptResponse, teamToLink, issuesReportLink } = req.body;
 
-        // Store important information in the session
         req.session.clientName = clientName;
         req.session.platform = platform;
+        req.session.gptResponse = gptResponse;
+        req.session.teamToLink = teamToLink;
+        req.session.issuesReportLink = issuesReportLink;
 
-        // Parse the GPT response if needed and store it
-        req.session.gptResponse = typeof gptResponse === 'string' ? gptResponse : JSON.stringify(gptResponse);
-
-        console.log('Session updated with GPT response:', {
+        console.log('Session updated with GPT response and links:', {
             clientName: req.session.clientName,
             platform: req.session.platform,
-            gptResponse: req.session.gptResponse
+            gptResponse: req.session.gptResponse,
+            teamToLink: req.session.teamToLink,
+            issuesReportLink: req.session.issuesReportLink
         });
 
         req.session.save((err) => {
@@ -86,7 +87,7 @@ app.post('/gpt-response', ensureAuthenticated, (req, res) => {
                 console.error('Error saving session:', err);
                 return res.status(500).json({ message: 'Failed to save session.' });
             }
-            res.status(200).json({ message: 'Session updated successfully with GPT response' });
+            res.status(200).json({ message: 'Session updated successfully with GPT response and links' });
         });
     } catch (error) {
         console.error('Error handling GPT response:', error);
@@ -99,7 +100,6 @@ app.post('/store-document-data', ensureAuthenticated, (req, res) => {
     try {
         const { clientName, platform, projectUrl, numViews, numIssues, gptResponse, toolType } = req.body;
 
-        // Store important information in the session
         req.session.clientName = clientName;
         req.session.platform = platform;
         req.session.projectUrl = projectUrl;
@@ -137,35 +137,24 @@ app.get('/create-document', ensureAuthenticated, async (req, res) => {
         console.log('Attempting to create document...');
         console.log('Session data at document creation:', req.session);
 
-        const { clientName, platform, projectUrl, numViews, numIssues, gptResponse } = req.session;
+        const { clientName, platform, projectUrl, numViews, numIssues, gptResponse, teamToLink, issuesReportLink } = req.session;
 
         if (!gptResponse) {
             console.error('Error: gptResponse is missing.');
             return res.status(400).json({ error: 'gptResponse is missing.' });
         }
 
-        // Parse gptResponse if it's still in string format
-        let parsedGptResponse;
-        try {
-            parsedGptResponse = JSON.parse(gptResponse);
-        } catch (err) {
-            console.error('Error parsing GPT response:', err);
-            return res.status(400).json({ error: 'Failed to parse GPT response.' });
-        }
-
-        // Ensure the gptResponse has the expected format
-        if (!Array.isArray(parsedGptResponse.categories)) {
-            console.error('Error: gptResponse is not in the expected format:', parsedGptResponse);
-            return res.status(400).json({ error: 'gptResponse is not in the expected format.' });
-        }
+        const parsedGptResponse = parseMarkdown(gptResponse);
 
         // Log variables for debugging
-        console.log('Variables for template filling:');
+        console.log(`Variables for template filling:`);
         console.log(`clientName: ${clientName}`);
         console.log(`platform: ${platform}`);
         console.log(`projectUrl: ${projectUrl}`);
         console.log(`numViews: ${numViews}`);
         console.log(`numIssues: ${numIssues}`);
+        console.log(`teamToLink: ${teamToLink}`);
+        console.log(`issuesReportLink: ${issuesReportLink}`);
         console.log('Parsed GPT Response:', parsedGptResponse);
 
         // Construct the path to the template document
@@ -179,7 +168,9 @@ app.get('/create-document', ensureAuthenticated, async (req, res) => {
             domain: projectUrl,
             x: numIssues,
             y: numViews,
-            topIssues: parsedGptResponse.categories
+            topIssues: parsedGptResponse.categories,
+            teamToLink,  // Include the team link URL
+            issuesReportLink // Include the issues report URL
         });
 
         console.log('Generated Document Path:', outputPath);
@@ -187,17 +178,8 @@ app.get('/create-document', ensureAuthenticated, async (req, res) => {
         // Send the generated document to the user
         res.download(outputPath, (err) => {
             if (err) {
-                console.error('Error sending the document:', err);
-                res.status(500).send('Error sending the document');
-            } else {
-                // Destroy the session after the document is downloaded
-                req.session.destroy(err => {
-                    if (err) {
-                        console.error('Failed to destroy session:', err);
-                    } else {
-                        console.log('Session destroyed after document creation.');
-                    }
-                });
+                console.error('Error sending document:', err);
+                res.status(500).send('Error sending document');
             }
         });
 
@@ -215,4 +197,4 @@ server.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
 });
 
-module.exports = server;  // Export the server for use in other parts of the application (e.g., testing)
+module.exports = server;

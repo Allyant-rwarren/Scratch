@@ -1,97 +1,88 @@
 const fs = require('fs').promises;
 const path = require('path');
-const Docxtemplater = require('docxtemplater');
 const PizZip = require('pizzip');
+const Docxtemplater = require('docxtemplater');
 
 async function fillTemplate(templatePath, data) {
     try {
         console.log('Starting template processing...');
         console.log('Template path:', templatePath);
-        console.log('Data received:', data);
+        console.log('Data received:', JSON.stringify(data, null, 2));
 
-        // Load the DOCX file as a binary
         const content = await fs.readFile(templatePath, 'binary');
         console.log('Template file loaded successfully.');
 
-        // Load the content into PizZip
         const zip = new PizZip(content);
-        console.log('Content loaded into PizZip.');
-
-        // Load the zip file into Docxtemplater
+        
         const doc = new Docxtemplater(zip, {
             paragraphLoop: true,
             linebreaks: true,
         });
-        console.log('Content loaded into Docxtemplater.');
 
-        // Prepare the data for the placeholders
         const placeholders = {
             client: data.clientName,
             domain: data.domain,
             'proposal date': new Date().toLocaleDateString(),
-            x: data.issueCount,
-            y: data.viewCount,
-            'Concept of ISSUES #1': data.topIssues[0].category_name,
-            'Example issue 1.1': `${data.topIssues[0].examples[0].Description} [Link](${data.topIssues[0].examples[0]["Issue Link"]})`,
-            'Example issue 1.2': `${data.topIssues[0].examples[1].Description} [Link](${data.topIssues[0].examples[1]["Issue Link"]})`,
-            'Concept of ISSUES #2': data.topIssues[1].category_name,
-            'Example issue 2.1': `${data.topIssues[1].examples[0].Description} [Link](${data.topIssues[1].examples[0]["Issue Link"]})`,
-            'Example issue 2.2': `${data.topIssues[1].examples[1].Description} [Link](${data.topIssues[1].examples[1]["Issue Link"]})`,
-            'Concept of ISSUE #3': data.topIssues[2].category_name,
-            'Example issue 3.1': `${data.topIssues[2].examples[0].Description} [Link](${data.topIssues[2].examples[0]["Issue Link"]})`,
-            'Example issue 3.2': `${data.topIssues[2].examples[1].Description} [Link](${data.topIssues[2].examples[1]["Issue Link"]})`,
+            x: data.numIssues,
+            y: data.numViews,
         };
 
-        // Handle optional third issues if they exist
-        if (data.topIssues[0].examples[2]) {
-            placeholders['Example issue 1.3'] = `${data.topIssues[0].examples[2].Description} [Link](${data.topIssues[0].examples[2]["Issue Link"]})`;
-        }
-        if (data.topIssues[1].examples[2]) {
-            placeholders['Example issue 2.3'] = `${data.topIssues[1].examples[2].Description} [Link](${data.topIssues[1].examples[2]["Issue Link"]})`;
-        }
-        if (data.topIssues[2].examples[2]) {
-            placeholders['Example issue 3.3'] = `${data.topIssues[2].examples[2].Description} [Link](${data.topIssues[2].examples[2]["Issue Link"]})`;
+        if (data.topIssues && Array.isArray(data.topIssues)) {
+            data.topIssues.slice(0, 3).forEach((category, index) => {
+                const categoryIndex = index + 1;
+                placeholders[`Concept of ISSUES #${categoryIndex}`] = category.title;
+
+                if (Array.isArray(category.issues)) {
+                    category.issues.slice(0, 2).forEach((issue, issueIndex) => {
+                        const issueNumber = issueIndex + 1;
+                        const hubIdMatch = issue.description.match(/\*\*#(\d+)\*\*/);
+                        const hubId = hubIdMatch ? hubIdMatch[1] : `Issue ${issueNumber}`;
+                        const issueDescription = issue.description.replace(/\*\*#\d+\*\*\s*-*\s*/, '').trim();
+                        
+                        // Remove any remaining formatting and extra dashes
+                        const cleanDescription = issueDescription.replace(/^\s*-\s*/, '');
+                        
+                        // Separate hub ID and description
+                        placeholders[`hubid${categoryIndex}.${issueNumber}`] = `#${hubId}`;
+                        placeholders[`Example issue ${categoryIndex}.${issueNumber}`] = cleanDescription;
+                    });
+
+                    // Fill remaining placeholders if less than 2 issues
+                    for (let i = category.issues.length + 1; i <= 2; i++) {
+                        placeholders[`hubid${categoryIndex}.${i}`] = '';
+                        placeholders[`Example issue ${categoryIndex}.${i}`] = '';
+                    }
+                }
+            });
+
+            // Ensure we have placeholders for all three categories even if there are fewer
+            for (let i = data.topIssues.length + 1; i <= 3; i++) {
+                placeholders[`Concept of ISSUES #${i}`] = '';
+                placeholders[`hubid${i}.1`] = '';
+                placeholders[`Example issue ${i}.1`] = '';
+                placeholders[`hubid${i}.2`] = '';
+                placeholders[`Example issue ${i}.2`] = '';
+            }
         }
 
-        // Log placeholders to ensure they are correct
-        console.log('Placeholders being set:', placeholders);
+        console.log('Placeholders prepared:', JSON.stringify(placeholders, null, 2));
 
-        // Apply the placeholders in the document
         doc.setData(placeholders);
 
-        try {
-            // Render the document (replace the placeholders with actual data)
-            doc.render();
-            console.log('Document rendered successfully.');
-        } catch (error) {
-            const e = {
-                message: error.message,
-                name: error.name,
-                stack: error.stack,
-                properties: error.properties,
-            };
-            console.log('Error during document rendering:', JSON.stringify({ error: e }));
-            throw error;
-        }
+        doc.render();
+        console.log('Document rendered successfully.');
 
-        // Create output file name using client name and current date
+        const buf = doc.getZip().generate({type: 'nodebuffer'});
+
         const filledTemplatePath = path.join(__dirname, 'filled', `AuditSummaryReport-${data.clientName}-${new Date().toISOString().split('T')[0]}.docx`);
         console.log('Output file path:', filledTemplatePath);
 
-        // Generate the document and save it
-        const buf = doc.getZip().generate({ type: 'nodebuffer' });
-        console.log('Document generated successfully.');
-
-        // Ensure the 'filled' directory exists
         await fs.mkdir(path.dirname(filledTemplatePath), { recursive: true });
-        console.log('Ensured "filled" directory exists.');
-
-        // Save the generated document to the file system
         await fs.writeFile(filledTemplatePath, buf);
+        
         console.log('Template successfully processed and saved to', filledTemplatePath);
 
         return filledTemplatePath;
-
     } catch (err) {
         console.error('Error processing template:', err);
         throw err;
